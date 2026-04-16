@@ -282,10 +282,11 @@ export default function ChatInterface({ onFormUpdate }) {
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="btn-primary shrink-0 px-4 py-3 text-base rounded-xl"
+            className="btn-primary shrink-0 px-4 py-3 rounded-xl flex flex-col items-center leading-tight"
             title="Send (Enter)"
           >
-            A Log
+            <span className="text-xs font-bold">AI</span>
+            <span className="text-xs">Log</span>
           </button>
         </div>
         <div className="mt-1 text-xs text-textSecondary">

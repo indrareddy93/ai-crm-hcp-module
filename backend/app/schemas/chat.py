@@ -12,7 +12,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
-    model: str = "gemma2-9b-it"
+    model: str = "llama-3.1-8b-instant"
     rep_id: str = "rep_001"
 
 
