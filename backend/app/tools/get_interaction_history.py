@@ -1,4 +1,4 @@
-import asyncio
+import uuid
 from typing import List
 from langchain_core.tools import tool
 from sqlalchemy import select, or_, func, desc
@@ -8,7 +8,7 @@ from app.models.interaction import Interaction
 
 
 @tool
-def get_interaction_history(hcp_id_or_name: str, limit: int = 10) -> List[dict]:
+async def get_interaction_history(hcp_id_or_name: str, limit: int = 10) -> List[dict]:
     """Retrieve recent interactions for an HCP by their ID or name.
 
     Args:
@@ -18,17 +18,10 @@ def get_interaction_history(hcp_id_or_name: str, limit: int = 10) -> List[dict]:
     Returns:
         List of interaction summaries sorted by most recent first
     """
-    return asyncio.get_event_loop().run_until_complete(
-        _get_history_async(hcp_id_or_name, limit)
-    )
-
-
-async def _get_history_async(hcp_id_or_name: str, limit: int) -> List[dict]:
     async with AsyncSessionLocal() as session:
         # Try as UUID first
         hcp_id = None
         try:
-            import uuid
             uuid.UUID(hcp_id_or_name)
             hcp_id = hcp_id_or_name
         except ValueError:

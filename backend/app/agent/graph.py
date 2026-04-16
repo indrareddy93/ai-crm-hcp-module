@@ -9,7 +9,7 @@ from app.tools import ALL_TOOLS
 
 def agent_node(state: AgentState):
     """Main reasoning node — calls the LLM with all tools bound."""
-    llm = get_llm(state.get("model", "gemma2-9b-it"))
+    llm = get_llm(state.get("model", "llama-3.1-8b-instant"))
     llm_with_tools = llm.bind_tools(ALL_TOOLS)
 
     messages = list(state["messages"])

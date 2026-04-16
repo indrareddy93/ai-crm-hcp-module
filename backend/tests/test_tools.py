@@ -3,6 +3,7 @@ Smoke tests for LangGraph tools with mocked DB and LLM.
 These verify tool signatures and return shapes without real DB/Groq calls.
 """
 import pytest
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 
@@ -47,9 +48,8 @@ class TestSearchHCP:
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
         with patch("app.tools.search_hcp.AsyncSessionLocal", return_value=mock_session):
-            import asyncio
-            from app.tools.search_hcp import _search_hcp_async
-            result = asyncio.get_event_loop().run_until_complete(_search_hcp_async("Sharma", 5))
+            from app.tools.search_hcp import search_hcp
+            result = asyncio.run(search_hcp.coroutine("Sharma", 5))
 
         assert isinstance(result, list)
         assert result[0]["name"] == "Priya Sharma"
@@ -76,11 +76,8 @@ class TestGetInteractionHistory:
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
         with patch("app.tools.get_interaction_history.AsyncSessionLocal", return_value=mock_session):
-            import asyncio
-            from app.tools.get_interaction_history import _get_history_async
-            result = asyncio.get_event_loop().run_until_complete(
-                _get_history_async(HCP_UUID, 10)
-            )
+            from app.tools.get_interaction_history import get_interaction_history
+            result = asyncio.run(get_interaction_history.coroutine(HCP_UUID, 10))
 
         assert isinstance(result, list)
         assert result[0]["interaction_id"] == "int-001"
@@ -100,10 +97,9 @@ class TestScheduleFollowup:
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
         with patch("app.tools.schedule_followup.AsyncSessionLocal", return_value=mock_session):
-            import asyncio
-            from app.tools.schedule_followup import _schedule_followup_async
-            result = asyncio.get_event_loop().run_until_complete(
-                _schedule_followup_async("int-001", "not-a-date", "Deliver samples")
+            from app.tools.schedule_followup import schedule_followup
+            result = asyncio.run(
+                schedule_followup.coroutine("int-001", "not-a-date", "Deliver samples")
             )
 
         assert "error" in result

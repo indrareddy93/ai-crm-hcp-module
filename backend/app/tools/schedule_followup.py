@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 from langchain_core.tools import tool
 from sqlalchemy import select
@@ -9,7 +8,7 @@ from datetime import date
 
 
 @tool
-def schedule_followup(interaction_id: str, due_date: str, description: str) -> dict:
+async def schedule_followup(interaction_id: str, due_date: str, description: str) -> dict:
     """Schedule a follow-up task tied to an existing interaction.
 
     Args:
@@ -20,12 +19,6 @@ def schedule_followup(interaction_id: str, due_date: str, description: str) -> d
     Returns:
         Created follow-up record with id, due_date, description, status
     """
-    return asyncio.get_event_loop().run_until_complete(
-        _schedule_followup_async(interaction_id, due_date, description)
-    )
-
-
-async def _schedule_followup_async(interaction_id: str, due_date: str, description: str) -> dict:
     async with AsyncSessionLocal() as session:
         # Verify interaction exists
         stmt = select(Interaction).where(Interaction.id == interaction_id)

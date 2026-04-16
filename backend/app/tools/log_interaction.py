@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 import json
 from typing import List
@@ -11,7 +10,7 @@ from app.config import get_settings
 
 
 @tool
-def log_interaction(
+async def log_interaction(
     hcp_name: str,
     raw_notes: str,
     interaction_type: str = "in_person",
@@ -28,14 +27,6 @@ def log_interaction(
     Returns:
         dict with interaction_id, summary, sentiment, key_entities, and hcp info
     """
-    return asyncio.get_event_loop().run_until_complete(
-        _log_interaction_async(hcp_name, raw_notes, interaction_type, products_discussed)
-    )
-
-
-async def _log_interaction_async(
-    hcp_name: str, raw_notes: str, interaction_type: str, products_discussed: List[str]
-) -> dict:
     settings = get_settings()
     async with AsyncSessionLocal() as session:
         # Find HCP by fuzzy name match

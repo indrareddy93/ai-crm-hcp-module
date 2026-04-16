@@ -1,4 +1,3 @@
-import asyncio
 import json
 from typing import Dict, Any
 from langchain_core.tools import tool
@@ -9,7 +8,7 @@ from app.config import get_settings
 
 
 @tool
-def edit_interaction(interaction_id: str, updates: Dict[str, Any]) -> dict:
+async def edit_interaction(interaction_id: str, updates: Dict[str, Any]) -> dict:
     """Edit fields of an existing logged interaction.
 
     Args:
@@ -21,12 +20,6 @@ def edit_interaction(interaction_id: str, updates: Dict[str, Any]) -> dict:
     Returns:
         Updated interaction record
     """
-    return asyncio.get_event_loop().run_until_complete(
-        _edit_interaction_async(interaction_id, updates)
-    )
-
-
-async def _edit_interaction_async(interaction_id: str, updates: Dict[str, Any]) -> dict:
     settings = get_settings()
     async with AsyncSessionLocal() as session:
         stmt = select(Interaction).where(Interaction.id == interaction_id)

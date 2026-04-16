@@ -1,4 +1,3 @@
-import asyncio
 from typing import List
 from langchain_core.tools import tool
 from sqlalchemy import select, or_, func
@@ -7,7 +6,7 @@ from app.models.hcp import HCP
 
 
 @tool
-def search_hcp(query: str, limit: int = 5) -> List[dict]:
+async def search_hcp(query: str, limit: int = 5) -> List[dict]:
     """Search for Healthcare Professionals (HCPs) by name, specialty, or hospital.
     Use this tool when you need to find an HCP's ID before logging or editing an interaction.
 
@@ -18,10 +17,6 @@ def search_hcp(query: str, limit: int = 5) -> List[dict]:
     Returns:
         List of matching HCP records with id, name, specialty, hospital, city
     """
-    return asyncio.get_event_loop().run_until_complete(_search_hcp_async(query, limit))
-
-
-async def _search_hcp_async(query: str, limit: int) -> List[dict]:
     async with AsyncSessionLocal() as session:
         q = f"%{query.lower()}%"
         stmt = select(HCP).where(
