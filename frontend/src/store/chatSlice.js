@@ -25,7 +25,7 @@ const chatSlice = createSlice({
   initialState: {
     messages: [],
     isLoading: false,
-    selectedModel: 'gemma2-9b-it',
+    selectedModel: 'llama-3.1-8b-instant',
     repId: 'rep_001',
     error: null,
   },

@@ -1,7 +1,7 @@
 from langchain_groq import ChatGroq
 from app.config import get_settings
 
-ALLOWED_MODELS = {"gemma2-9b-it", "llama-3.3-70b-versatile"}
+ALLOWED_MODELS = {"llama-3.1-8b-instant", "llama-3.3-70b-versatile"}
 
 
 def get_llm(model: str = None) -> ChatGroq:
