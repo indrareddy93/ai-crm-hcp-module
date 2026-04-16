@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { createInteraction } from '../store/interactionsSlice'
-import { fetchHCPs, setSelected } from '../store/hcpsSlice'
 import client from '../api/client'
 
 const INTERACTION_TYPES = [
@@ -27,7 +26,7 @@ const DEFAULT_FORM = {
   sentiment: 'neutral',
 }
 
-export default function InteractionForm({ onSuccess }) {
+export default function InteractionForm({ onSuccess, chatFilledData }) {
   const dispatch = useDispatch()
   const { creating, createError } = useSelector((s) => s.interactions)
 
@@ -38,10 +37,74 @@ export default function InteractionForm({ onSuccess }) {
   const [productInput, setProductInput] = useState('')
   const [toast, setToast] = useState(null)
   const [searching, setSearching] = useState(false)
+  // Track which fields were auto-filled by AI chat
+  const [aiFilled, setAiFilled] = useState(new Set())
+
+  // Auto-fill form fields when chat populates data
+  useEffect(() => {
+    if (!chatFilledData) return
+
+    const filled = new Set()
+
+    setForm((prev) => {
+      const next = { ...prev }
+
+      if (chatFilledData.hcp_id) {
+        next.hcp_id = chatFilledData.hcp_id
+        filled.add('hcp')
+      }
+      if (chatFilledData.sentiment) {
+        next.sentiment = chatFilledData.sentiment
+        filled.add('sentiment')
+      }
+      if (chatFilledData.interaction_type) {
+        next.interaction_type = chatFilledData.interaction_type
+        filled.add('interaction_type')
+      }
+      if (chatFilledData.summary) {
+        next.raw_notes = chatFilledData.summary
+        filled.add('raw_notes')
+      }
+      if (chatFilledData.outcome) {
+        next.outcome = chatFilledData.outcome
+        filled.add('outcome')
+      }
+      // Populate products from key_entities if available
+      if (chatFilledData.key_entities?.drugs_mentioned?.length) {
+        next.products_discussed = chatFilledData.key_entities.drugs_mentioned
+        filled.add('products_discussed')
+      }
+
+      return next
+    })
+
+    // Update HCP display name
+    if (chatFilledData.hcp) {
+      setHcpSearch(chatFilledData.hcp)
+      const parts = chatFilledData.hcp.split(' ')
+      setSelectedHcp({
+        id: chatFilledData.hcp_id,
+        first_name: parts[0] || '',
+        last_name: parts.slice(1).join(' ') || '',
+        specialty: '',
+        hospital: '',
+      })
+      filled.add('hcp')
+    }
+
+    setAiFilled(filled)
+
+    // Show a brief notification
+    setToast({ type: 'ai', msg: '🤖 Form auto-populated from AI chat. Review and submit.' })
+    setTimeout(() => setToast(null), 4000)
+  }, [chatFilledData])
 
   // Debounced HCP search
   useEffect(() => {
     if (!hcpSearch || hcpSearch.length < 2) { setHcpResults([]); return }
+    // Skip search if HCP is already selected from chat or dropdown
+    if (selectedHcp && hcpSearch === `${selectedHcp.first_name} ${selectedHcp.last_name}`) return
+
     const timer = setTimeout(async () => {
       setSearching(true)
       try {
@@ -54,19 +117,21 @@ export default function InteractionForm({ onSuccess }) {
       }
     }, 300)
     return () => clearTimeout(timer)
-  }, [hcpSearch])
+  }, [hcpSearch, selectedHcp])
 
   const handleSelectHcp = (hcp) => {
     setSelectedHcp(hcp)
     setForm((f) => ({ ...f, hcp_id: hcp.id }))
     setHcpSearch(`${hcp.first_name} ${hcp.last_name}`)
     setHcpResults([])
+    setAiFilled((prev) => { const s = new Set(prev); s.delete('hcp'); return s })
   }
 
   const addProduct = () => {
     const p = productInput.trim()
     if (p && !form.products_discussed.includes(p)) {
       setForm((f) => ({ ...f, products_discussed: [...f.products_discussed, p] }))
+      setAiFilled((prev) => { const s = new Set(prev); s.delete('products_discussed'); return s })
     }
     setProductInput('')
   }
@@ -90,10 +155,18 @@ export default function InteractionForm({ onSuccess }) {
       setForm(DEFAULT_FORM)
       setHcpSearch('')
       setSelectedHcp(null)
+      setAiFilled(new Set())
       if (onSuccess) onSuccess()
       setTimeout(() => setToast(null), 3000)
     }
   }
+
+  const aiBadge = (field) =>
+    aiFilled.has(field) ? (
+      <span className="ml-1.5 text-xs font-normal text-primary-600 bg-primary-50 px-1.5 py-0.5 rounded-full border border-primary-100">
+        ✨ AI
+      </span>
+    ) : null
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -103,6 +176,8 @@ export default function InteractionForm({ onSuccess }) {
           className={`px-4 py-3 rounded-xl text-sm font-medium ${
             toast.type === 'success'
               ? 'bg-green-50 text-success border border-green-200'
+              : toast.type === 'ai'
+              ? 'bg-primary-50 text-primary-700 border border-primary-200'
               : 'bg-red-50 text-error border border-red-200'
           }`}
         >
@@ -112,16 +187,21 @@ export default function InteractionForm({ onSuccess }) {
 
       {/* HCP Search */}
       <div>
-        <label className="block text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wide">
-          Healthcare Professional *
+        <label className="flex items-center text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wide">
+          Healthcare Professional *{aiBadge('hcp')}
         </label>
         <div className="relative">
           <input
             type="text"
             value={hcpSearch}
-            onChange={(e) => { setHcpSearch(e.target.value); setSelectedHcp(null); setForm((f) => ({ ...f, hcp_id: '' })) }}
+            onChange={(e) => {
+              setHcpSearch(e.target.value)
+              setSelectedHcp(null)
+              setForm((f) => ({ ...f, hcp_id: '' }))
+              setAiFilled((prev) => { const s = new Set(prev); s.delete('hcp'); return s })
+            }}
             placeholder="Search by name, specialty, hospital..."
-            className="input-field"
+            className={`input-field ${aiFilled.has('hcp') ? 'border-primary-300 bg-primary-50' : ''}`}
           />
           {searching && (
             <div className="absolute right-3 top-2.5 text-xs text-textSecondary animate-pulse">searching...</div>
@@ -148,22 +228,27 @@ export default function InteractionForm({ onSuccess }) {
         </div>
         {selectedHcp && (
           <div className="mt-2 text-xs text-primary-700 bg-primary-50 px-3 py-1.5 rounded-lg">
-            Selected: {selectedHcp.first_name} {selectedHcp.last_name} — {selectedHcp.specialty}, {selectedHcp.hospital}
+            Selected: {selectedHcp.first_name} {selectedHcp.last_name}
+            {selectedHcp.specialty ? ` — ${selectedHcp.specialty}` : ''}
+            {selectedHcp.hospital ? `, ${selectedHcp.hospital}` : ''}
           </div>
         )}
       </div>
 
       {/* Interaction Type */}
       <div>
-        <label className="block text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wide">
-          Interaction Type
+        <label className="flex items-center text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wide">
+          Interaction Type{aiBadge('interaction_type')}
         </label>
         <div className="flex flex-wrap gap-2">
           {INTERACTION_TYPES.map((t) => (
             <button
               key={t.value}
               type="button"
-              onClick={() => setForm((f) => ({ ...f, interaction_type: t.value }))}
+              onClick={() => {
+                setForm((f) => ({ ...f, interaction_type: t.value }))
+                setAiFilled((prev) => { const s = new Set(prev); s.delete('interaction_type'); return s })
+              }}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
                 form.interaction_type === t.value
                   ? 'bg-primary-700 text-white border-primary-700'
@@ -191,8 +276,8 @@ export default function InteractionForm({ onSuccess }) {
 
       {/* Products */}
       <div>
-        <label className="block text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wide">
-          Products Discussed
+        <label className="flex items-center text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wide">
+          Products Discussed{aiBadge('products_discussed')}
         </label>
         <div className="flex gap-2">
           <input
@@ -226,43 +311,52 @@ export default function InteractionForm({ onSuccess }) {
 
       {/* Raw Notes */}
       <div>
-        <label className="block text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wide">
-          Field Notes
+        <label className="flex items-center text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wide">
+          Field Notes{aiBadge('raw_notes')}
         </label>
         <textarea
           value={form.raw_notes}
-          onChange={(e) => setForm((f) => ({ ...f, raw_notes: e.target.value }))}
+          onChange={(e) => {
+            setForm((f) => ({ ...f, raw_notes: e.target.value }))
+            setAiFilled((prev) => { const s = new Set(prev); s.delete('raw_notes'); return s })
+          }}
           placeholder="Describe the interaction, key discussion points, HCP reactions..."
           rows={4}
-          className="input-field resize-none"
+          className={`input-field resize-none ${aiFilled.has('raw_notes') ? 'border-primary-300 bg-primary-50' : ''}`}
         />
       </div>
 
       {/* Outcome */}
       <div>
-        <label className="block text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wide">
-          Outcome
+        <label className="flex items-center text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wide">
+          Outcome{aiBadge('outcome')}
         </label>
         <textarea
           value={form.outcome}
-          onChange={(e) => setForm((f) => ({ ...f, outcome: e.target.value }))}
+          onChange={(e) => {
+            setForm((f) => ({ ...f, outcome: e.target.value }))
+            setAiFilled((prev) => { const s = new Set(prev); s.delete('outcome'); return s })
+          }}
           placeholder="What was agreed? Any follow-up actions?"
           rows={2}
-          className="input-field resize-none"
+          className={`input-field resize-none ${aiFilled.has('outcome') ? 'border-primary-300 bg-primary-50' : ''}`}
         />
       </div>
 
       {/* Sentiment */}
       <div>
-        <label className="block text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wide">
-          Sentiment (optional)
+        <label className="flex items-center text-xs font-semibold text-textSecondary mb-1.5 uppercase tracking-wide">
+          Sentiment{aiBadge('sentiment')}
         </label>
         <div className="flex gap-2">
           {SENTIMENT_OPTIONS.map((s) => (
             <button
               key={s.value}
               type="button"
-              onClick={() => setForm((f) => ({ ...f, sentiment: s.value }))}
+              onClick={() => {
+                setForm((f) => ({ ...f, sentiment: s.value }))
+                setAiFilled((prev) => { const s2 = new Set(prev); s2.delete('sentiment'); return s2 })
+              }}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
                 form.sentiment === s.value
                   ? 'bg-primary-700 text-white border-primary-700'

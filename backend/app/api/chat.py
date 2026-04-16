@@ -52,7 +52,10 @@ async def chat_endpoint(payload: ChatRequest):
             if msg.role == "user":
                 lc_messages.append(HumanMessage(content=msg.content))
             elif msg.role == "assistant":
-                lc_messages.append(AIMessage(content=msg.content))
+                # Only include assistant messages that have actual text content
+                # (skip empty stubs that only had tool_calls — they lose context when serialized)
+                if msg.content and msg.content.strip():
+                    lc_messages.append(AIMessage(content=msg.content))
             # Skip tool/system messages from client — agent manages those
 
         initial_state = {
