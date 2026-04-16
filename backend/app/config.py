@@ -3,8 +3,8 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_crm_hcp"
-    GROQ_API_KEY: str = ""
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:sujanix%23123@localhost:5432/ai-crm-hcp-module"
+    GROQ_API_KEY: str = ""  # Set via GROQ_API_KEY in backend/.env
     DEFAULT_MODEL: str = "gemma2-9b-it"
     CORS_ORIGINS: str = "http://localhost:5173"
 

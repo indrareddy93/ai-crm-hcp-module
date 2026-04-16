@@ -1,15 +1,9 @@
 import uuid
 from datetime import datetime, date
-from sqlalchemy import String, DateTime, Date, Text, Enum, ForeignKey, func
+from sqlalchemy import DateTime, Date, Text, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
-import enum
 from app.db.base import Base
-
-
-class FollowupStatus(str, enum.Enum):
-    pending = "pending"
-    done = "done"
 
 
 class Followup(Base):
@@ -26,9 +20,7 @@ class Followup(Base):
     )
     due_date: Mapped[date] = mapped_column(Date, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(
-        Enum(FollowupStatus, name="followup_status_enum"), nullable=False, default="pending"
-    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="pending")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

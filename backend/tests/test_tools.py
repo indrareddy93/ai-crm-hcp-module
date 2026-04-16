@@ -58,9 +58,11 @@ class TestSearchHCP:
 
 class TestGetInteractionHistory:
     def test_returns_list_with_uuid(self):
-        """get_interaction_history returns list when given UUID."""
-        mock_interaction = make_mock_interaction()
-        mock_hcp = make_mock_hcp()
+        """get_interaction_history returns list when given a valid UUID."""
+        # Use a real UUID so the tool skips the name-search path and makes exactly 2 DB calls
+        HCP_UUID = "11111111-1111-1111-1111-111111111111"
+        mock_interaction = make_mock_interaction(hcp_id=HCP_UUID)
+        mock_hcp = make_mock_hcp(id=HCP_UUID)
 
         mock_result_int = MagicMock()
         mock_result_int.scalars.return_value.all.return_value = [mock_interaction]
@@ -77,7 +79,7 @@ class TestGetInteractionHistory:
             import asyncio
             from app.tools.get_interaction_history import _get_history_async
             result = asyncio.get_event_loop().run_until_complete(
-                _get_history_async("hcp-001", 10)
+                _get_history_async(HCP_UUID, 10)
             )
 
         assert isinstance(result, list)
